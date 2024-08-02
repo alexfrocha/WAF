@@ -1,5 +1,8 @@
 use std::{io::{Read, Write}, net::{TcpListener, TcpStream}, thread};
 
+use utils::{format_http_request_to_json, format_http_response_to_json};
+mod utils;
+
 const BASE_URL: &str = "127.0.0.1";
 
 fn handle_request(mut client_stream: TcpStream) {
@@ -9,8 +12,8 @@ fn handle_request(mut client_stream: TcpStream) {
     match client_stream.read(&mut buffer) {
         Ok(size) => {
             let request = String::from_utf8_lossy(&buffer[..size]);
-            // println!("[RECEIVED REQUEST] \n{request:#?}");
-            println!("[RECEIVED REQUEST]");
+            println!("[RECEIVED REQUEST] \n{}\n\n", format_http_request_to_json(&request));
+            // println!("[RECEIVED REQUEST]");
             
             if let Ok(stream) = TcpStream::connect("127.0.0.1:8080") {
                 backend_stream = Some(stream);
@@ -21,7 +24,7 @@ fn handle_request(mut client_stream: TcpStream) {
 
             if let Some(mut backend_stream) = backend_stream {
                 if let Err(e) = backend_stream.write_all(&buffer[..size]) {
-                    eprintln!("[FAILED TO SEND REQUEST TO BACKEND SERVER] \n{e}");
+                    eprintln!("[FAILED TO SEND REQUEST TO BACKEND SERVER] \n{e}\n\n");
                     return;
                 }
                 
@@ -29,23 +32,23 @@ fn handle_request(mut client_stream: TcpStream) {
                 match backend_stream.read(&mut response_buffer) {
                     Ok(response_size) => {
                         let response = String::from_utf8_lossy(&response_buffer[..response_size]);
-                        println!("[RECEIVED RESPONSE] \n{response:#?}");
+                        println!("[RECEIVED RESPONSE] \n{}\n\n", format_http_response_to_json(&response));
                         if let Err(e) = client_stream.write_all(&response_buffer[..response_size]) {
-                            eprintln!("[FAILED TO SEND RESPONSE TO CLIENT] \n{e}");
+                            eprintln!("[FAILED TO SEND RESPONSE TO CLIENT] \n{e}\n\n");
                         }
                     }
                     Err(e) => eprintln!("[FAILED TO READ RESPONSE FROM BACKED] \n{e}")
                 }
             }
         }
-        Err(e) => eprintln!("[FAILED TO READ REQUEST FROM CLIENT] \n{e}")
+        Err(e) => eprintln!("[FAILED TO READ REQUEST FROM CLIENT] \n{e}\n\n")
     }
 
 }
 
 fn main() -> std::io::Result<()> {
     let listener = TcpListener::bind("127.0.0.1:3030")?;
-    println!("[PROXY LISTENING] 127.0.0.1:3030");
+    println!("[PROXY LISTENING] 127.0.0.1:3030\n\n");
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
@@ -53,7 +56,7 @@ fn main() -> std::io::Result<()> {
                     handle_request(stream)
                 });
             }
-            Err(e) => eprintln!("[FAILED TO ACCEPT CONNECTION] \n{e}")
+            Err(e) => eprintln!("[FAILED TO ACCEPT CONNECTION] \n{e}\n\n")
         }
     }
     Ok(())
